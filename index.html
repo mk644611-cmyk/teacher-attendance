@@ -7,6 +7,7 @@
   <title>Teacher Attendance</title>
 
   <script type="module">
+
     import {
       FaceLandmarker,
       FilesetResolver
@@ -15,10 +16,17 @@
     let faceLandmarker;
     let running = false;
 
+    let blinkCount = 0;
+    let eyeWasClosed = false;
+    let livenessPassed = false;
+
+
     async function loadFaceModel() {
-      const vision = await FilesetResolver.forVisionTasks(
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
-      );
+
+      const vision =
+        await FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+        );
 
       faceLandmarker =
         await FaceLandmarker.createFromOptions(
@@ -30,10 +38,14 @@
             },
 
             runningMode: "VIDEO",
-            numFaces: 1
+
+            numFaces: 1,
+
+            outputFaceBlendshapes: true
           }
         );
     }
+
 
     window.startCamera = async function () {
 
@@ -45,11 +57,13 @@
 
       try {
 
+        status.innerText =
+          "Loading face system...";
+
         if (!faceLandmarker) {
-          status.innerText =
-            "Loading face detector...";
           await loadFaceModel();
         }
+
 
         const stream =
           await navigator.mediaDevices.getUserMedia({
@@ -59,28 +73,39 @@
             audio: false
           });
 
+
         video.srcObject = stream;
 
         running = true;
 
+        blinkCount = 0;
+        eyeWasClosed = false;
+        livenessPassed = false;
+
+
         status.innerText =
-          "Camera started. Looking for face...";
+          "👁️ Please BLINK twice";
+
 
         detectFace();
 
       } catch (error) {
 
         status.innerText =
-          "ERROR: " + error.message;
+          "❌ ERROR: " + error.message;
+
       }
     };
 
-    async function detectFace() {
+
+    function detectFace() {
 
       if (!running) return;
 
+
       const video =
         document.getElementById("camera");
+
 
       if (video.readyState >= 2) {
 
@@ -90,31 +115,115 @@
             performance.now()
           );
 
-        if (result.faceLandmarks.length > 0) {
+
+        if (result.faceLandmarks.length === 0) {
 
           document.getElementById("status")
             .innerText =
-            "✅ FACE DETECTED";
+            "❌ Face not detected";
 
         } else {
 
-          document.getElementById("status")
-            .innerText =
-            "Looking for face...";
+          if (
+            result.faceBlendshapes &&
+            result.faceBlendshapes.length > 0
+          ) {
+
+            const categories =
+              result.faceBlendshapes[0].categories;
+
+
+            let leftBlink = 0;
+            let rightBlink = 0;
+
+
+            for (const item of categories) {
+
+              if (
+                item.categoryName ===
+                "eyeBlinkLeft"
+              ) {
+                leftBlink = item.score;
+              }
+
+
+              if (
+                item.categoryName ===
+                "eyeBlinkRight"
+              ) {
+                rightBlink = item.score;
+              }
+            }
+
+
+            const blinkScore =
+              (leftBlink + rightBlink) / 2;
+
+
+            /*
+              Eye closed
+            */
+
+            if (
+              blinkScore > 0.55 &&
+              !eyeWasClosed
+            ) {
+
+              eyeWasClosed = true;
+            }
+
+
+            /*
+              Eye opened again
+              = one blink
+            */
+
+            if (
+              blinkScore < 0.25 &&
+              eyeWasClosed
+            ) {
+
+              eyeWasClosed = false;
+
+              blinkCount++;
+
+              if (blinkCount < 2) {
+
+                document.getElementById("status")
+                  .innerText =
+                  "✅ Blink 1/2 — Blink once more";
+
+              }
+
+              if (blinkCount >= 2) {
+
+                livenessPassed = true;
+
+                document.getElementById("status")
+                  .innerText =
+                  "✅ LIVENESS PASSED";
+              }
+            }
+          }
         }
       }
 
+
       requestAnimationFrame(detectFace);
     }
+
   </script>
 
+
   <style>
+
     body {
       font-family: Arial;
       text-align: center;
       background: #f5f5f5;
       padding: 20px;
     }
+
 
     .box {
       max-width: 450px;
@@ -124,6 +233,7 @@
       border-radius: 15px;
     }
 
+
     video {
       width: 100%;
       max-width: 400px;
@@ -131,6 +241,7 @@
       background: black;
       transform: scaleX(-1);
     }
+
 
     button {
       width: 100%;
@@ -144,33 +255,42 @@
       font-weight: bold;
     }
 
+
     #status {
       margin-top: 20px;
       font-size: 18px;
       font-weight: bold;
     }
+
   </style>
+
 </head>
+
 
 <body>
 
-<div class="box">
+  <div class="box">
 
-  <h2>📷 Teacher Attendance</h2>
+    <h2>📷 Teacher Attendance</h2>
 
-  <video id="camera"
-         autoplay
-         playsinline></video>
+    <video
+      id="camera"
+      autoplay
+      playsinline>
+    </video>
 
-  <button onclick="startCamera()">
-    START LIVE CAMERA
-  </button>
 
-  <div id="status">
-    Camera not started
+    <button onclick="startCamera()">
+      START LIVE CAMERA
+    </button>
+
+
+    <div id="status">
+      Camera not started
+    </div>
+
   </div>
 
-</div>
-
 </body>
+
 </html>
