@@ -1,1 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
+  <title>Teacher Attendance Camera</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #f5f5f5;
+      padding: 20px;
+    }
+
+    .box {
+      max-width: 450px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+    }
+
+    video {
+      width: 100%;
+      max-width: 400px;
+      border-radius: 15px;
+      background: black;
+      transform: scaleX(-1);
+    }
+
+    button {
+      width: 100%;
+      max-width: 400px;
+      padding: 16px;
+      margin-top: 20px;
+      border: none;
+      border-radius: 10px;
+      background: #2196F3;
+      color: white;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    #status {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="box">
+
+  <h2>📷 Teacher Attendance</h2>
+
+  <video id="camera" autoplay playsinline></video>
+
+  <button onclick="startCamera()">
+    START LIVE CAMERA
+  </button>
+
+  <div id="status">
+    Camera not started
+  </div>
+
+</div>
+
+<script>
+
+async function startCamera() {
+
+  const video =
+    document.getElementById("camera");
+
+  const status =
+    document.getElementById("status");
+
+  try {
+
+    const stream =
+      await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "user"
+        },
+        audio: false
+      });
+
+    video.srcObject = stream;
+
+    status.innerText =
+      "✅ LIVE CAMERA WORKING";
+
+  } catch (error) {
+
+    status.innerText =
+      "❌ Camera Error: " + error.message;
+
+  }
+
+}
+
+</script>
+
+</body>
+</html>
