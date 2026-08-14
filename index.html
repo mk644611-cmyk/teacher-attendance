@@ -4,11 +4,113 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <title>Teacher Attendance Camera</title>
+  <title>Teacher Attendance</title>
+
+  <script type="module">
+    import {
+      FaceLandmarker,
+      FilesetResolver
+    } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3";
+
+    let faceLandmarker;
+    let running = false;
+
+    async function loadFaceModel() {
+      const vision = await FilesetResolver.forVisionTasks(
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+      );
+
+      faceLandmarker =
+        await FaceLandmarker.createFromOptions(
+          vision,
+          {
+            baseOptions: {
+              modelAssetPath:
+                "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task"
+            },
+
+            runningMode: "VIDEO",
+            numFaces: 1
+          }
+        );
+    }
+
+    window.startCamera = async function () {
+
+      const video =
+        document.getElementById("camera");
+
+      const status =
+        document.getElementById("status");
+
+      try {
+
+        if (!faceLandmarker) {
+          status.innerText =
+            "Loading face detector...";
+          await loadFaceModel();
+        }
+
+        const stream =
+          await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: "user"
+            },
+            audio: false
+          });
+
+        video.srcObject = stream;
+
+        running = true;
+
+        status.innerText =
+          "Camera started. Looking for face...";
+
+        detectFace();
+
+      } catch (error) {
+
+        status.innerText =
+          "ERROR: " + error.message;
+      }
+    };
+
+    async function detectFace() {
+
+      if (!running) return;
+
+      const video =
+        document.getElementById("camera");
+
+      if (video.readyState >= 2) {
+
+        const result =
+          faceLandmarker.detectForVideo(
+            video,
+            performance.now()
+          );
+
+        if (result.faceLandmarks.length > 0) {
+
+          document.getElementById("status")
+            .innerText =
+            "✅ FACE DETECTED";
+
+        } else {
+
+          document.getElementById("status")
+            .innerText =
+            "Looking for face...";
+        }
+      }
+
+      requestAnimationFrame(detectFace);
+    }
+  </script>
 
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: Arial;
       text-align: center;
       background: #f5f5f5;
       padding: 20px;
@@ -32,7 +134,6 @@
 
     button {
       width: 100%;
-      max-width: 400px;
       padding: 16px;
       margin-top: 20px;
       border: none;
@@ -45,6 +146,7 @@
 
     #status {
       margin-top: 20px;
+      font-size: 18px;
       font-weight: bold;
     }
   </style>
@@ -56,7 +158,9 @@
 
   <h2>📷 Teacher Attendance</h2>
 
-  <video id="camera" autoplay playsinline></video>
+  <video id="camera"
+         autoplay
+         playsinline></video>
 
   <button onclick="startCamera()">
     START LIVE CAMERA
@@ -67,42 +171,6 @@
   </div>
 
 </div>
-
-<script>
-
-async function startCamera() {
-
-  const video =
-    document.getElementById("camera");
-
-  const status =
-    document.getElementById("status");
-
-  try {
-
-    const stream =
-      await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "user"
-        },
-        audio: false
-      });
-
-    video.srcObject = stream;
-
-    status.innerText =
-      "✅ LIVE CAMERA WORKING";
-
-  } catch (error) {
-
-    status.innerText =
-      "❌ Camera Error: " + error.message;
-
-  }
-
-}
-
-</script>
 
 </body>
 </html>
